@@ -1,0 +1,46 @@
+services:
+  db:
+    build:
+      context: ./db
+    container_name: dvwa_db
+    environment:
+      # Variables lues par notre entrypoint custom
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - dvwa_net
+
+  web:
+    build:
+      context: ./web
+    container_name: dvwa_web
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DVWA_SECURITY: ${DVWA_SECURITY:-low}
+      DVWA_SETUP_CREATE_DB: ${DVWA_SETUP_CREATE_DB:-1}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    networks:
+      - dvwa_net
+
+volumes:
+  db_data:
+
+networks:
+  dvwa_net:
+    driver: bridge
